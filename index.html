@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PRISM — Interactive 3D Product Configurator</title>
+  <meta name="description" content="A WebGL/Three.js product configurator: dynamic materials, exploded views, spatial annotations, and real-time PBR rendering." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Blueprint grid background -->
+    <div class="blueprint-bg"></div>
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">◇</span>
+        <span class="brand-name">PRISM</span>
+        <span class="brand-sub">/ 3D CONFIGURATOR</span>
+      </div>
+      <div class="topbar-actions">
+        <button id="btn-explode" class="btn btn-ghost" title="Explode / assemble the model">
+          <span class="btn-icon">⤢</span> Exploded View
+        </button>
+        <button id="btn-annotate" class="btn btn-ghost" title="Click the model to drop a note">
+          <span class="btn-icon">◎</span> Annotate
+        </button>
+        <button id="btn-reset" class="btn btn-ghost" title="Dispose &amp; rebuild the scene (VRAM cleanup demo)">
+          <span class="btn-icon">↺</span> Reset
+        </button>
+        <button id="btn-debug" class="btn btn-outline" title="Toggle debug tools (D)">
+          <span class="btn-icon">⌁</span> Debug
+        </button>
+      </div>
+    </header>
+
+    <!-- Primary viewport -->
+    <main class="viewport-wrap">
+      <canvas id="viewport"></canvas>
+      <div id="css2d-layer"></div>
+
+      <!-- corner brackets, purely decorative CAD framing -->
+      <div class="frame-bracket tl"></div>
+      <div class="frame-bracket tr"></div>
+      <div class="frame-bracket bl"></div>
+      <div class="frame-bracket br"></div>
+
+      <!-- Performance overlay -->
+      <div id="perf-overlay" class="hud-panel perf-overlay">
+        <div class="hud-title">Performance Monitor</div>
+        <div class="hud-row"><span>FPS</span><b id="stat-fps">60</b></div>
+        <div class="hud-row"><span>Draw Calls</span><b id="stat-calls">0</b></div>
+        <div class="hud-row"><span>Triangles</span><b id="stat-tris">0</b></div>
+        <div class="hud-row"><span>Texture Mem</span><b id="stat-tex">0 MB</b></div>
+        <div class="hud-row"><span>Geometries</span><b id="stat-geo">0</b></div>
+      </div>
+
+      <!-- Annotation hint -->
+      <div id="annotate-hint" class="hud-panel annotate-hint hidden">
+        Click any surface on the model to pin a note. Click <b>Annotate</b> again to stop.
+      </div>
+
+      <!-- Empty state for loading -->
+      <div id="loading-veil" class="loading-veil">
+        <div class="loading-mark">◇</div>
+        <div class="loading-text">Assembling scene graph…</div>
+      </div>
+    </main>
+
+    <!-- Right: contextual control panel (accordion) -->
+    <aside class="control-panel">
+      <div class="panel-scroll">
+
+        <section class="accordion open" data-section="materials">
+          <button class="accordion-head">
+            <span>Materials</span><span class="chev">⌄</span>
+          </button>
+          <div class="accordion-body">
+            <label class="field-label">Target Part</label>
+            <select id="part-select" class="select" aria-label="Target part"></select>
+
+            <label class="field-label">Base Color</label>
+            <input type="color" id="mat-color" class="color-input" value="#8a8f98" aria-label="Base Color" />
+
+            <label class="field-label">Roughness <span id="val-roughness" class="val">0.55</span></label>
+            <input type="range" id="mat-roughness" min="0" max="1" step="0.01" value="0.55" class="slider" title="Adjust material roughness" aria-label="Roughness" />
+
+            <label class="field-label">Metalness <span id="val-metalness" class="val">0.10</span></label>
+            <input type="range" id="mat-metalness" min="0" max="1" step="0.01" value="0.10" class="slider" aria-label="Metalness" />
+
+            <label class="field-label">Fresnel Rim <span id="val-fresnel" class="val">0.00</span></label>
+            <input type="range" id="mat-fresnel" min="0" max="1" step="0.01" value="0" class="slider" title="Adjust Fresnel rim intensity" aria-label="Fresnel Rim" />
+
+            <div class="swatch-row" id="preset-swatches"></div>
+          </div>
+        </section>
+
+        <section class="accordion" data-section="environment">
+          <button class="accordion-head">
+            <span>Environment</span><span class="chev">⌄</span>
+          </button>
+          <div class="accordion-body">
+            <label class="field-label">Preset</label>
+            <div class="chip-row" id="env-chips"></div>
+
+            <label class="field-label">Key Light Intensity <span id="val-key" class="val">1.4</span></label>
+            <input type="range" id="light-key" min="0" max="4" step="0.05" value="1.4" class="slider" title="Adjust key light intensity" aria-label="Key Light Intensity" />
+
+            <label class="field-label">Shadows</label>
+            <div class="toggle-row">
+              <label class="switch">
+                <input type="checkbox" id="shadow-toggle" checked title="Toggle soft contact shadows" aria-label="Soft contact shadows" />
+                <span class="switch-track"></span>
+              </label>
+              <span class="switch-label">Soft contact shadows</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="accordion" data-section="camera">
+          <button class="accordion-head">
+            <span>Camera</span><span class="chev">⌄</span>
+          </button>
+          <div class="accordion-body">
+            <label class="field-label">Angle Presets</label>
+            <div class="chip-row" id="camera-chips"></div>
+
+            <label class="field-label">Field of View <span id="val-fov" class="val">45</span></label>
+            <input type="range" id="cam-fov" min="20" max="80" step="1" value="45" class="slider" title="Adjust camera field of view" aria-label="Field of View" />
+
+            <div class="toggle-row">
+              <label class="switch">
+                <input type="checkbox" id="autorotate-toggle" title="Toggle camera auto-rotation" aria-labelledby="autorotate-label" />
+                <span class="switch-track"></span>
+              </label>
+              <span id="autorotate-label" class="switch-label">Auto-rotate</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="accordion" data-section="notes">
+          <button class="accordion-head">
+            <span>Annotations <span id="note-count" class="count-badge">0</span></span><span class="chev">⌄</span>
+          </button>
+          <div class="accordion-body">
+            <div id="notes-list" class="notes-list">
+              <p class="empty-hint">No notes yet. Use “Annotate” above and click the model.</p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </aside>
+
+    <!-- Debug / advanced overlay (hidden by default, toggled with D) -->
+    <div id="debug-overlay" class="debug-overlay hidden">
+      <div class="debug-col">
+        <div class="debug-head">Scene Graph</div>
+        <div id="scene-graph-tree" class="scene-graph-tree"></div>
+      </div>
+      <div class="debug-col">
+        <div class="debug-head">Shader Uniforms — Fresnel Material</div>
+        <div id="shader-gui-mount"></div>
+        <div class="debug-head memory-management-head">Memory Management</div>
+        <div class="debug-mem">
+          <p class="mem-note">Disposing an object frees its geometry, material, and texture handles from VRAM. Use the console to watch it happen:</p>
+          <button id="btn-dispose-demo" class="btn btn-outline btn-block">Run Dispose Demo</button>
+          <pre id="dispose-log" class="dispose-log"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Annotation text popup -->
+    <div id="note-modal" class="note-modal hidden">
+      <div class="note-modal-box">
+        <label class="field-label">Note</label>
+        <textarea id="note-text" rows="3" placeholder="Describe this point…"></textarea>
+        <div class="note-modal-actions">
+          <button id="note-cancel" class="btn btn-ghost">Cancel</button>
+          <button id="note-save" class="btn btn-outline">Pin Note</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
