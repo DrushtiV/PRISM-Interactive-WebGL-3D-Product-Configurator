@@ -9,10 +9,13 @@ A studio-quality WebGL product configurator built with **Three.js** and **Vite**
 ## Demo
 
 <!-- Screenshot Preview -->
-![PRISM 3D Configurator Screenshot](.\assets\preview.png)
+<img width="1926" height="919" alt="Img_Preview" src="https://github.com/user-attachments/assets/7f9b7e0a-592e-40f2-95c1-09525a0c739b" />
+
+---
 
 <!-- Inline Autoplay Video Preview -->
-[Demo video (MP4)](https://github.com/DrushtiV/PRISM-Interactive-WebGL-3D-Product-Configurator/raw/main/assets/demo.mp4)
+<img width="1930" height="900" alt="demo (2)" src="https://github.com/user-attachments/assets/d3bb70d1-7615-4517-b990-abc01e23a233" />
+
 
 ## 1. What's inside
 
