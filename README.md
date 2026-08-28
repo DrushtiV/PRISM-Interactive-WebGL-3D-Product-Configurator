@@ -239,5 +239,3 @@ prism-configurator/
 | GitHub Pages shows a blank page with 404s in console | Confirm `base: './'` is still set in `vite.config.js` and that you deployed the contents of `dist/` (not the project root). |
 
 ---
-
-Built as a portfolio piece demonstrating real-time WebGL/Three.js engineering: scene graph design, PBR + custom GLSL, raycasting, animation, and explicit GPU memory management.
